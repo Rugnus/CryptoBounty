@@ -1,0 +1,17 @@
+{
+  "name": "cryptobounty",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "lint": "node scripts/lint.mjs",
+    "format": "node scripts/format.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
+

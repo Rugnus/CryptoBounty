@@ -1,0 +1,18 @@
+export type ChainId = 31337 | 11155111;
+
+export const contracts = {
+  31337: {
+    chainId: 31337,
+    name: "anvil",
+    bountyEscrow: "0x0000000000000000000000000000000000000000",
+    usdc: "0x0000000000000000000000000000000000000000",
+    usdt: "0x0000000000000000000000000000000000000000",
+    mockArbitrator: "0x0000000000000000000000000000000000000000"
+  },
+  11155111: {
+    chainId: 11155111,
+    name: "sepolia",
+    bountyEscrow: "0x0000000000000000000000000000000000000000"
+  }
+} as const satisfies Record<number, unknown>;
+

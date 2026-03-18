@@ -1,0 +1,21 @@
+{
+  "name": "@cryptobounty/shared",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src/metadata/*.json"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "format": "prettier -w ."
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}
+

@@ -1,0 +1,13 @@
+{
+  "name": "@cryptobounty/contracts",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "install:deps": "forge install foundry-rs/forge-std@v1.9.6 OpenZeppelin/openzeppelin-contracts@v5.0.2 --no-commit",
+    "build": "forge build",
+    "test": "forge test -vvv",
+    "anvil": "anvil",
+    "deploy:anvil": "forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0.1:8545 --broadcast"
+  }
+}
+

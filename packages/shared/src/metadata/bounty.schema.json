@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cryptobounty.local/schema/bounty.json",
+  "title": "BountyMetadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "title",
+    "description",
+    "category",
+    "tags",
+    "difficulty",
+    "payout",
+    "chainId",
+    "createdAt"
+  ],
+  "properties": {
+    "title": { "type": "string", "minLength": 3, "maxLength": 140 },
+    "description": { "type": "string", "minLength": 1, "maxLength": 20000 },
+    "category": {
+      "type": "string",
+      "enum": ["bugfix", "feature", "audit", "design", "content", "other"]
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 32 },
+      "minItems": 0,
+      "maxItems": 16,
+      "uniqueItems": true
+    },
+    "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"] },
+    "payout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tokenSymbol", "amount"],
+      "properties": {
+        "tokenSymbol": { "type": "string", "minLength": 2, "maxLength": 16 },
+        "amount": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\\\.[0-9]+)?$"
+        }
+      }
+    },
+    "chainId": { "type": "integer" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "externalUrl": { "type": "string", "maxLength": 2048 },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "url"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "url": { "type": "string", "maxLength": 2048 }
+        }
+      },
+      "maxItems": 10
+    }
+  }
+}
+
