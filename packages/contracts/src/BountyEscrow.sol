@@ -112,7 +112,7 @@ contract BountyEscrow is ReentrancyGuard, Ownable, IArbitrable {
         bountyId = _createBounty(msg.sender, token, amount, metadataURI, metadataHash);
     }
 
-    function apply(uint256 bountyId, string calldata messageURI) external {
+    function applyBounty(uint256 bountyId, string calldata messageURI) external {
         Bounty storage b = bounties[bountyId];
         require(b.sponsor != address(0), "not found");
         require(b.status == Status.Created, "not open");

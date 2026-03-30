@@ -30,7 +30,7 @@ contract BountyEscrowTest is Test {
         uint256 id = escrow.createBountyETH{value: 1 ether}("ipfs://cid", keccak256("m"));
 
         vm.prank(hunter);
-        escrow.apply(id, "ipfs://apply");
+        escrow.applyBounty(id, "ipfs://apply");
 
         vm.prank(sponsor);
         escrow.assignHunter(id, hunter);
@@ -55,7 +55,7 @@ contract BountyEscrowTest is Test {
         vm.stopPrank();
 
         vm.prank(hunter);
-        escrow.apply(id, "apply");
+        escrow.applyBounty(id, "apply");
 
         vm.prank(sponsor);
         escrow.assignHunter(id, hunter);
@@ -78,7 +78,7 @@ contract BountyEscrowTest is Test {
         uint256 id = escrow.createBountyETH{value: 1 ether}("ipfs://cid", keccak256("m"));
 
         vm.prank(hunter);
-        escrow.apply(id, "apply");
+        escrow.applyBounty(id, "apply");
 
         vm.prank(sponsor);
         escrow.assignHunter(id, hunter);
