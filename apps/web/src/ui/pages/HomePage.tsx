@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../../lib/api";
@@ -24,9 +24,11 @@ export function HomePage() {
   const { data, isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
-      const res = await api.get<{ items: Bounty[] }>("/bounties", { params: { q } });
+      const res = await api.get<{ items: Bounty[] }>("/bounties", {
+        params: { q },
+      });
       return res.data.items;
-    }
+    },
   });
 
   return (
@@ -42,7 +44,9 @@ export function HomePage() {
         </div>
       </div>
 
-      {isLoading ? <div className="text-sm text-neutral-600">Loading…</div> : null}
+      {isLoading ? (
+        <div className="text-sm text-neutral-600">Loading…</div>
+      ) : null}
       {error ? (
         <div className="text-sm text-red-600">Failed to load bounties.</div>
       ) : null}
@@ -56,7 +60,9 @@ export function HomePage() {
           >
             <div className="flex items-center justify-between gap-3">
               <div className="font-medium">#{b.bountyId}</div>
-              <div className="text-xs rounded bg-neutral-100 px-2 py-1">{b.status}</div>
+              <div className="text-xs rounded bg-neutral-100 px-2 py-1">
+                {b.status}
+              </div>
             </div>
             <div className="mt-2 text-sm text-neutral-700">
               Sponsor: <span className="font-mono">{b.sponsor}</span>
@@ -65,11 +71,12 @@ export function HomePage() {
               Token: <span className="font-mono">{b.token}</span> Amount:{" "}
               <span className="font-mono">{b.amount}</span>
             </div>
-            <div className="mt-1 text-xs text-neutral-500 truncate">{b.metadataUri}</div>
+            <div className="mt-1 text-xs text-neutral-500 truncate">
+              {b.metadataUri}
+            </div>
           </Link>
         ))}
       </div>
     </div>
   );
 }
-

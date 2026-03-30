@@ -51,10 +51,16 @@ func (s *Server) PostSIWEVerify(c *fiber.Ctx) error {
 	if msg.GetDomain() != s.cfg.SIWEDomain {
 		return fiber.NewError(fiber.StatusUnauthorized, "domain mismatch")
 	}
-	if msg.GetURI().String() != s.cfg.SIWEURI {
+
+	// --- FIX: GetURI() возвращает url.URL (не указатель) ---
+	uri := msg.GetURI()
+	if uri.String() != s.cfg.SIWEURI {
 		return fiber.NewError(fiber.StatusUnauthorized, "uri mismatch")
 	}
-	if msg.GetChainID() == nil || msg.GetChainID().Int64() != s.cfg.ChainID {
+
+	// --- FIX: GetChainID() возвращает int, не *big.Int ---
+	chainID := msg.GetChainID()
+	if int64(chainID) != s.cfg.ChainID {
 		return fiber.NewError(fiber.StatusUnauthorized, "chainId mismatch")
 	}
 
@@ -67,17 +73,15 @@ func (s *Server) PostSIWEVerify(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusUnauthorized, "nonce invalid")
 	}
 
-	// Verify signature. siwe-go expects signature as hex string with 0x prefix.
+	// Verify signature
 	sig := req.Signature
 	if !strings.HasPrefix(sig, "0x") {
 		sig = "0x" + sig
 	}
-	_, err = msg.Verify(sig, &siwe.VerifyOpts{
-		Domain:  s.cfg.SIWEDomain,
-		Nonce:   nonce,
-		Time:    time.Now(),
-		ChainID: msg.GetChainID(),
-	})
+
+	domain := s.cfg.SIWEDomain
+	now := time.Now()
+	_, err = msg.Verify(sig, &domain, &nonce, &now)
 	if err != nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "siwe verify failed")
 	}
