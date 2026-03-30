@@ -168,18 +168,32 @@ func decodeEvent(contractABI abi.ABI, name string, lg types.Log) (payload []byte
 	ev := contractABI.Events[name]
 
 	out := map[string]any{}
+
+	// --- Разделяем аргументы на indexed и non-indexed вручную ---
+	var indexedArgs []abi.Argument
+	var nonIndexedArgs abi.Arguments
+
+	for _, arg := range ev.Inputs {
+		if arg.Indexed {
+			indexedArgs = append(indexedArgs, arg)
+		} else {
+			nonIndexedArgs = append(nonIndexedArgs, arg)
+		}
+	}
+
 	// decode non-indexed
 	if len(lg.Data) > 0 {
 		m := map[string]any{}
-		if err := ev.Inputs.NonIndexed().UnpackIntoMap(m, lg.Data); err != nil {
+		if err := nonIndexedArgs.UnpackIntoMap(m, lg.Data); err != nil {
 			return nil, nil, err
 		}
 		for k, v := range m {
 			out[k] = normalizeABIValue(v)
 		}
 	}
+
 	// decode indexed
-	for i, arg := range ev.Inputs.Indexed() {
+	for i, arg := range indexedArgs {
 		if len(lg.Topics) <= i+1 {
 			continue
 		}
@@ -192,7 +206,6 @@ func decodeEvent(contractABI abi.ABI, name string, lg types.Log) (payload []byte
 		case abi.FixedBytesTy:
 			out[arg.Name] = "0x" + hex.EncodeToString(topic.Bytes())
 		default:
-			// unsupported indexed types in MVP
 			out[arg.Name] = "0x" + hex.EncodeToString(topic.Bytes())
 		}
 	}
@@ -216,12 +229,41 @@ func normalizeABIValue(v any) any {
 	switch t := v.(type) {
 	case common.Address:
 		return t.Hex()
+	case common.Hash:
+		return t.Hex()
 	case *big.Int:
 		return t.String()
 	case []byte:
 		return "0x" + hex.EncodeToString(t)
+	case [32]byte:
+		return "0x" + hex.EncodeToString(t[:])
+	case [20]byte:
+		return "0x" + hex.EncodeToString(t[:])
 	default:
 		return v
+	}
+}
+
+func toHexString(v any) string {
+	switch t := v.(type) {
+	case string:
+		// Ensure even number of hex digits
+		s := strings.TrimPrefix(t, "0x")
+		if len(s)%2 != 0 {
+			s = "0" + s
+		}
+		return "0x" + s
+	case []interface{}:
+		// JSON-десериализованный байт-массив [171, 205, ...]
+		b := make([]byte, len(t))
+		for i, x := range t {
+			if f, ok := x.(float64); ok {
+				b[i] = byte(f)
+			}
+		}
+		return "0x" + hex.EncodeToString(b)
+	default:
+		return fmt.Sprintf("0x%x", v)
 	}
 }
 
@@ -244,7 +286,7 @@ func upsertEventAndProject(
 insert into bounty_events(chain_id, block_number, tx_hash, log_index, bounty_id, event_name, payload)
 values($1,$2,$3,$4,$5,$6,$7)
 on conflict do nothing
-`, chainID, int64(lg.BlockNumber), lg.TxHash.Bytes(), int32(lg.Index), bountyID.String(), eventName, payload)
+`, chainID, int64(lg.BlockNumber), lg.TxHash.Hex(), int32(lg.Index), bountyID.String(), eventName, payload)
 	if err != nil {
 		return err
 	}
@@ -256,9 +298,9 @@ on conflict do nothing
 		_ = json.Unmarshal(payload, &m)
 		amount := fmt.Sprintf("%v", m["amount"])
 		metadataURI := fmt.Sprintf("%v", m["metadataURI"])
-		metadataHash := fmt.Sprintf("%v", m["metadataHash"])
-		sponsor := fmt.Sprintf("%v", m["sponsor"])
-		token := fmt.Sprintf("%v", m["token"])
+		metadataHash := toHexString(m["metadataHash"]) // <-- FIX
+		sponsor := toHexString(m["sponsor"])           // <-- FIX (на всякий случай)
+		token := toHexString(m["token"])               // <-- FIX (на всякий случай)
 		_, err = tx.Exec(ctx, `
 insert into bounties(chain_id, bounty_id, sponsor, token, amount_numeric, metadata_uri, metadata_hash, created_block, created_tx_hash, status)
 values($1,$2,decode(trim(leading '0x' from $3),'hex'),decode(trim(leading '0x' from $4),'hex'),$5,$6,decode(trim(leading '0x' from $7),'hex'),$8,$9,'Created')
@@ -269,21 +311,21 @@ on conflict (chain_id, bounty_id) do update set
   metadata_uri=excluded.metadata_uri,
   metadata_hash=excluded.metadata_hash,
   status='Created'
-`, chainID, bountyID.String(), sponsor, token, amount, metadataURI, metadataHash, int64(lg.BlockNumber), lg.TxHash.Bytes())
+`, chainID, bountyID.String(), sponsor, token, amount, metadataURI, metadataHash, int64(lg.BlockNumber), lg.TxHash.Hex())
 	case "ApplicationSubmitted":
 		var m map[string]any
 		_ = json.Unmarshal(payload, &m)
-		hunter := fmt.Sprintf("%v", m["hunter"])
+		hunter := toHexString(m["hunter"]) // <-- FIX
 		messageURI := fmt.Sprintf("%v", m["messageURI"])
 		_, err = tx.Exec(ctx, `
 insert into applications(chain_id, bounty_id, hunter, message_uri, created_block, created_tx_hash)
 values($1,$2,decode(trim(leading '0x' from $3),'hex'),$4,$5,$6)
 on conflict do update set message_uri=excluded.message_uri
-`, chainID, bountyID.String(), hunter, messageURI, int64(lg.BlockNumber), lg.TxHash.Bytes())
+`, chainID, bountyID.String(), hunter, messageURI, int64(lg.BlockNumber), lg.TxHash.Hex())
 	case "HunterAssigned":
 		var m map[string]any
 		_ = json.Unmarshal(payload, &m)
-		hunter := fmt.Sprintf("%v", m["hunter"])
+		hunter := toHexString(m["hunter"]) // <-- FIX
 		_, err = tx.Exec(ctx, `
 update bounties set status='Assigned', hunter=decode(trim(leading '0x' from $3),'hex')
 where chain_id=$1 and bounty_id=$2
@@ -393,4 +435,3 @@ func maxI64(a, b int64) int64 {
 	}
 	return b
 }
-
