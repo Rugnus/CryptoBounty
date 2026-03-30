@@ -1,9 +1,9 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { keccak256, toBytes, parseEther, isAddress } from "viem";
+import { isAddress, keccak256, parseEther, toBytes } from "viem";
 import { useChainId, usePublicClient, useWriteContract } from "wagmi";
+import { z } from "zod";
 
 import { bountyEscrowAbi, contracts } from "@cryptobounty/shared";
 import { Button } from "../components/Button";
@@ -14,14 +14,16 @@ const schema = z.object({
   description: z.string().min(1).max(20000),
   metadataUri: z.string().min(3),
   token: z.string().optional(), // blank => ETH
-  amount: z.string().min(1)
+  amount: z.string().min(1),
 });
 
 type FormValues = z.infer<typeof schema>;
 
 export function CreateBountyPage() {
   const chainId = useChainId();
-  const escrow = (contracts as any)[chainId]?.bountyEscrow as `0x${string}` | undefined;
+  const escrow = (contracts as any)[chainId]?.bountyEscrow as
+    | `0x${string}`
+    | undefined;
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
@@ -30,14 +32,14 @@ export function CreateBountyPage() {
   const {
     register,
     handleSubmit,
-    formState: { isSubmitting }
+    formState: { isSubmitting, errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       metadataUri: "ipfs://todo",
       token: "",
-      amount: "0.01"
-    }
+      amount: "0.01",
+    },
   });
 
   const onSubmit = useMemo(
@@ -45,8 +47,14 @@ export function CreateBountyPage() {
       handleSubmit(async (v) => {
         setError(null);
         setTxHash(null);
-        if (!escrow || escrow === "0x0000000000000000000000000000000000000000") {
-          setError("ESCROW address not configured for this chain (update shared addresses).");
+
+        if (
+          !escrow ||
+          escrow === "0x0000000000000000000000000000000000000000"
+        ) {
+          setError(
+            "ESCROW address not configured for this chain (update shared addresses).",
+          );
           return;
         }
         if (!publicClient) {
@@ -62,7 +70,7 @@ export function CreateBountyPage() {
           difficulty: "medium",
           payout: { tokenSymbol: v.token ? "ERC20" : "ETH", amount: v.amount },
           chainId,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         };
         const metadataHash = keccak256(toBytes(JSON.stringify(metadata)));
 
@@ -72,7 +80,7 @@ export function CreateBountyPage() {
             address: escrow,
             functionName: "createBountyETH",
             args: [v.metadataUri, metadataHash],
-            value: parseEther(v.amount)
+            value: parseEther(v.amount),
           });
           await publicClient.waitForTransactionReceipt({ hash });
           setTxHash(hash);
@@ -86,14 +94,17 @@ export function CreateBountyPage() {
         // ERC20 flow requires approve first; in MVP user does it manually (or we add approve UI later).
         setError("ERC20 create requires token approve() UI; use ETH for now.");
       }),
-    [chainId, escrow, handleSubmit, publicClient, writeContractAsync]
+    [chainId, escrow, handleSubmit, publicClient, writeContractAsync],
   );
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Create bounty</h1>
 
-      <form onSubmit={onSubmit} className="space-y-3 rounded-lg border bg-white p-4">
+      <form
+        onSubmit={onSubmit}
+        className="space-y-3 rounded-lg border bg-white p-4"
+      >
         <div className="space-y-1">
           <div className="text-sm font-medium">Title</div>
           <Input {...register("title")} placeholder="Fix critical bug in…" />
@@ -128,6 +139,16 @@ export function CreateBountyPage() {
           </div>
         ) : null}
 
+        {Object.keys(errors).length > 0 && (
+          <div className="text-sm text-red-600">
+            {Object.entries(errors).map(([key, val]) => (
+              <div key={key}>
+                {key}: {val?.message}
+              </div>
+            ))}
+          </div>
+        )}
+
         <Button type="submit" disabled={isSubmitting}>
           Create & deposit
         </Button>
@@ -135,4 +156,3 @@ export function CreateBountyPage() {
     </div>
   );
 }
-
