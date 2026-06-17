@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+
 
 import {IArbitrator} from "./interfaces/IArbitrator.sol";
 import {IArbitrable} from "./interfaces/IArbitrable.sol";
@@ -108,7 +110,7 @@ contract BountyEscrow is ReentrancyGuard, Ownable, IArbitrable {
         require(token != address(0), "token=0");
         require(tokenWhitelist[token], "token not allowed");
         require(amount > 0, "amount=0");
-        _safeTransferFrom(token, msg.sender, address(this), amount);
+        SafeERC20.safeTransferFrom(token, msg.sender, address(this), amount);
         bountyId = _createBounty(msg.sender, token, amount, metadataURI, metadataHash);
     }
 
@@ -254,21 +256,11 @@ contract BountyEscrow is ReentrancyGuard, Ownable, IArbitrable {
             (bool ok, ) = to.call{value: amount}("");
             require(ok, "eth transfer failed");
         } else {
-            _safeTransfer(token, to, amount);
+            SafeERC20.safeTransfer(token, to, amount);
         }
     }
 
-    function _safeTransfer(address token, address to, uint256 amount) internal {
-        (bool ok, bytes memory data) = token.call(abi.encodeWithSelector(IERC20.transfer.selector, to, amount));
-        require(ok && (data.length == 0 || abi.decode(data, (bool))), "transfer failed");
-    }
-
-    function _safeTransferFrom(address token, address from, address to, uint256 amount) internal {
-        (bool ok, bytes memory data) = token.call(
-            abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, amount)
-        );
-        require(ok && (data.length == 0 || abi.decode(data, (bool))), "transferFrom failed");
-    }
+    
 
     receive() external payable {}
 }
